@@ -1,0 +1,64 @@
+---
+- name: Deploy Laravel to production
+  hosts: web
+  become: yes
+  vars:
+    deploy_path: /var/www/CHHEANG_Hokleng
+    repo_url: https://github.com/HoklengPro/DevOps2026_2027_Lab-.git
+
+  tasks:
+    - name: Add safe directory for git
+      command: git config --global --add safe.directory {{ deploy_path }}
+
+    - name: Clone or update Laravel project
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ deploy_path }}"
+        version: main
+        force: yes
+
+    - name: Install Composer dependencies
+      command: composer install --no-dev --no-interaction
+      args:
+        chdir: "{{ deploy_path }}"
+      environment:
+        COMPOSER_ALLOW_SUPERUSER: "1"
+
+    - name: Copy .env file
+      copy:
+        src: "{{ deploy_path }}/.env.example"
+        dest: "{{ deploy_path }}/.env"
+        remote_src: yes
+        force: no
+
+    - name: Generate application key
+      command: php artisan key:generate
+      args:
+        chdir: "{{ deploy_path }}"
+
+    - name: Create SQLite database
+      file:
+        path: "{{ deploy_path }}/database/database.sqlite"
+        state: touch
+
+    - name: Run database migrations
+      command: php artisan migrate --force
+      args:
+        chdir: "{{ deploy_path }}"
+
+    - name: Install NPM dependencies
+      command: npm install
+      args:
+        chdir: "{{ deploy_path }}"
+
+    - name: Build frontend assets
+      command: npm run build
+      args:
+        chdir: "{{ deploy_path }}"
+
+    - name: Set permissions
+      file:
+        path: "{{ deploy_path }}"
+        owner: www-data
+        group: www-data
+        recurse: yes

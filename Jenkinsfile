@@ -25,9 +25,22 @@ pipeline {
             }
         }
 
+        stage('NPM Build') {
+            steps {
+                sh 'npm install'
+                sh 'npm run build'
+            }
+        }
+
         stage('Run Tests') {
             steps {
                 sh 'php artisan test'
+            }
+        }
+
+        stage('Deploy with Ansible') {
+            steps {
+                sh 'ansible-playbook -i ansible/inventory.ini ansible/deploy.yml -v'
             }
         }
     }
